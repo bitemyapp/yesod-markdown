@@ -7,12 +7,35 @@ usage tailored for Yesod.
 
 ## Usage
 
-```
+```hs
 getPageR :: FilePath -> Handler RepHtml
 getPageR fp = do
-    content <- liftIO $ fmap markdownToHtml (markdownFromFile fp)
+    content <- liftIO
+        $ fmap markdownToHtml
+        $ markdownFromFile fp
 
-    defaultLayout do
+    defaultLayout $ do
+        [shamlet|
+            <div class="content">
+                #{content}
+            |]
+```
+
+The default extensions are minimal, you can specify you're preferred
+[extensions][] with `markdownToHtmlWithExtensions`:
+
+[extensions]: http://hackage.haskell.org/package/pandoc/docs/Text-Pandoc-Extensions.html
+
+```haskell
+import Text.Pandoc.Extensions (githubMarkdownExtensions)
+
+getPageR :: FilePath -> Handler RepHtml
+getPageR fp = do
+    content <- liftIO
+        $ fmap (markdownToHtmlWithExtensions githubMarkdownExtensions)
+        $ markdownFromFile fp
+
+    defaultLayout $ do
         [shamlet|
             <div class="content">
                 #{content}
