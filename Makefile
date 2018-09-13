@@ -2,25 +2,22 @@ all: setup build test lint
 
 .PHONY: setup
 setup:
-	stack setup
-	stack build --dependencies-only --test --no-run-tests
-	stack install hlint weeder
+	stack setup $(STACK_ARGUMENTS)
+	# Avoid ExitFailure (-9) (THIS MAY INDICATE OUT OF MEMORY)
+	stack build $(STACK_ARGUMENTS) -j 1 Cabal haskell-src-exts
+	stack build $(STACK_ARGUMENTS) --dependencies-only --test --no-run-tests
+	stack install $(STACK_ARGUMENTS) --copy-compiler-tool hlint weeder
 
 .PHONY: build
 build:
-	stack build --pedantic --test --no-run-tests
+	stack build $(STACK_ARGUMENTS) --pedantic --test --no-run-tests
 
 .PHONY: test
 test:
-	stack test
+	stack build $(STACK_ARGUMENTS) --pedantic --test
 
 
 .PHONY: lint
 lint:
-	hlint .
-	weeder .
-
-.PHONY: check-nightly
-check-nightly:
-	stack setup --resolver nightly
-	stack build --resolver nightly --pedantic --test
+	stack exec $(STACK_ARGUMENTS) hlint .
+	stack exec $(STACK_ARGUMENTS) weeder .

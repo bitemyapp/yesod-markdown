@@ -1,28 +1,48 @@
 ---
 version: 2.0
 
-jobs:
-  build:
+references:
+  stack_build: &stack_build
     docker:
-      - image: fpco/stack-build:lts-9.18
+      # https://github.com/haskell-works/stack-build/blob/master/minimal/Dockerfile
+      - image: quay.io/haskell_works/stack-build-minimal
     steps:
       - checkout
-      - restore_cache:
-          keys:
-            - stack-{{ .Branch }}-{{ checksum "stack.yaml" }}
-            - stack-{{ .Branch }}
-            - stack-
       - run:
           name: Upgrade Stack
           command: stack upgrade
       - run:
+          name: Digest
+          command: |
+            {
+              stack --version
+              echo -- "${STACK_YAML}/${STACK_ARGUMENTS}"
+            } > rdigest
+            git ls-files | xargs md5sum > sdigest
+      - restore_cache:
+          keys:
+            - v2-{{ .Branch }}-{{ checksum "rdigest" }}-{{ checksum "sdigest" }}
+            - v2-{{ .Branch }}-{{ checksum "rdigest" }}-
+            - v2-{{ .Branch }}-
+            - v2-master-
+      - run:
           name: Dependencies
-          command: make setup
+          command: |
+            if [ "${STACK_CLEAN:-0}" -eq 1 ]; then
+              # stack clean --full is not enough to combat the scourge that is
+              # this stupid effing haddock-library internal dependency bug.
+              # https://circleci.com/gh/pbrisbin/yesod-markdown/252
+              rm -rf ~/.stack ./.stack-work
+            fi
+
+            make setup
+          no_output_timeout: 120m
       - run:
           name: Build
           command: make build
       - save_cache:
-          key: stack-{{ .Branch }}-{{ checksum "stack.yaml" }}
+          # yamllint disable-line rule:line-length
+          key: v2-{{ .Branch }}-{{ checksum "rdigest" }}-{{ checksum "sdigest" }}
           paths:
             - ~/.stack
             - ./.stack-work
@@ -31,4 +51,62 @@ jobs:
           command: make test
       - run:
           name: Lint
-          command: make lint
+          command: |
+            if [ "${LINT:-1}" = 1 ]; then
+              curl -L -o .hlint.yaml \
+                https://raw.githubusercontent.com/pbrisbin/dotfiles/master/hlint.yaml
+              make lint
+            fi
+
+jobs:
+  build_8.0.2:
+    <<: *stack_build
+    environment:
+      STACK_ARGUMENTS: --no-terminal
+      STACK_YAML: stack-lts-9.21.yaml
+  build_8.2.2:
+    <<: *stack_build
+    environment:
+      STACK_ARGUMENTS: --no-terminal
+      STACK_YAML: stack-lts-11.19.yaml
+  build_8.4.3:
+    <<: *stack_build
+    environment:
+      STACK_ARGUMENTS: --no-terminal
+      STACK_YAML: stack-lts-12.2.yaml
+  build:
+    <<: *stack_build
+    environment:
+      STACK_ARGUMENTS: --no-terminal
+  build_nightly:
+    <<: *stack_build
+    environment:
+      # weeder is not happy, again
+      # https://circleci.com/gh/pbrisbin/yesod-markdown/222
+      LINT: 0
+      # Building nightly frequently fails if using cached artifacts. Something
+      # about the haddock-library internal dependency bug is not really fixed.
+      # https://circleci.com/gh/pbrisbin/yesod-markdown/246
+      STACK_CLEAN: 1
+      STACK_ARGUMENTS: --no-terminal --resolver nightly
+      STACK_YAML: stack-nightly.yaml
+
+workflows:
+  version: 2
+  commit:
+    jobs:
+      - build_8.0.2
+      - build_8.2.2
+      - build_8.4.3
+      - build
+      - build_nightly
+  nightly:
+    triggers:
+      - schedule:
+          cron: "0 0 * * *"
+          filters:
+            branches:
+              only:
+                - master
+    jobs:
+      - build_nightly

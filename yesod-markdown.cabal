@@ -1,11 +1,13 @@
--- This file has been generated from package.yaml by hpack version 0.20.0.
+cabal-version: >= 1.10
+
+-- This file has been generated from package.yaml by hpack version 0.29.6.
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 3b56dbba3c23c4fb289c2f88a2e6347c62b4394af65339041e3a1761da70370b
+-- hash: 47fea3f9118c4fb6ddbe0f1b272571bc7fab08a2a8ca207aa0b00358d86b11a0
 
 name:           yesod-markdown
-version:        0.12.1
+version:        0.12.3
 synopsis:       Tools for using markdown in a yesod application
 description:    A subset of Pandoc functionality useful for markdown processing in yesod applications
 category:       Web, Yesod
@@ -16,8 +18,6 @@ maintainer:     Patrick Brisbin <pbrisbin@gmail.com>
 license:        GPL-2
 license-file:   LICENSE
 build-type:     Simple
-cabal-version:  >= 1.10
-
 extra-source-files:
     README.md
 
@@ -35,7 +35,7 @@ library
     , blaze-markup >=0.5 && <0.9
     , bytestring >=0.9 && <0.11
     , directory
-    , pandoc >=2.0 && <2.2
+    , pandoc >=2.0 && <2.3
     , persistent >=0.9
     , shakespeare >=2.0 && <2.1
     , text >=0.11 && <2.0
